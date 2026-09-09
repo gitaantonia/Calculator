@@ -5,26 +5,17 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:calculator/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('Prioritas operasi dan kiri-kanan sesuai kalkulator', () {
+    expect(hitungEkspresi('-6+(-65)'), equals(-71));
+    expect(hitungEkspresi('2(3+4)'), equals(14));
+    expect(hitungEkspresi('(2+3)*4'), equals(20));
+    expect(hitungEkspresi('8/4*2'), equals(4));
+    expect(hitungEkspresi('10-3-2'), equals(5));
+    expect(hitungEkspresi('2+3*4'), equals(14));
   });
 }

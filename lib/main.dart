@@ -8,6 +8,187 @@ void main() {
 const Color biru = Color(0xFF1565C0);
 const Color putih = Color(0xFFFFFFFF);
 
+bool _isOperator(String karakter) {
+  return ['÷', 'x', '-', '+'].contains(karakter);
+}
+
+bool _isAngka(String karakter) {
+  return RegExp(r'[0-9]').hasMatch(karakter);
+}
+
+String _normalisasiEkspresi(String ekspresi) {
+  String hasil = '';
+
+  for (int i = 0; i < ekspresi.length; i++) {
+    final karakter = ekspresi[i];
+    final karakterSebelumnya = i > 0 ? ekspresi[i - 1] : '';
+    final karakterBerikutnya = i + 1 < ekspresi.length ? ekspresi[i + 1] : '';
+
+    if (karakter == '(' &&
+        (karakterSebelumnya == ')' || _isAngka(karakterSebelumnya))) {
+      hasil += '*(';
+      continue;
+    }
+
+    if (karakter == ')' &&
+        (karakterBerikutnya == '(' || _isAngka(karakterBerikutnya))) {
+      hasil += ')';
+      if (karakterBerikutnya.isNotEmpty) {
+        hasil += '*';
+      }
+      continue;
+    }
+
+    hasil += karakter;
+  }
+
+  return hasil.replaceAll('x', '*').replaceAll('÷', '/');
+}
+
+List<String> _tokenisasiEkspresi(String ekspresi) {
+  final tokens = <String>[];
+  String buffer = '';
+
+  for (int i = 0; i < ekspresi.length; i++) {
+    final karakter = ekspresi[i];
+
+    if (RegExp(r'[0-9.]').hasMatch(karakter)) {
+      buffer += karakter;
+      continue;
+    }
+
+    if (buffer.isNotEmpty) {
+      tokens.add(buffer);
+      buffer = '';
+    }
+
+    if (karakter == '-' &&
+        (i == 0 || ['+', '-', '*', '/', '(', ')'].contains(ekspresi[i - 1]))) {
+      tokens.add('u-');
+      continue;
+    }
+
+    if (karakter == '+' &&
+        (i == 0 || ['+', '-', '*', '/', '(', ')'].contains(ekspresi[i - 1]))) {
+      tokens.add('u+');
+      continue;
+    }
+
+    if (['+', '-', '*', '/', '(', ')'].contains(karakter)) {
+      tokens.add(karakter);
+    }
+  }
+
+  if (buffer.isNotEmpty) {
+    tokens.add(buffer);
+  }
+
+  return tokens;
+}
+
+class _ParserEkspresi {
+  final List<String> tokens;
+  int index = 0;
+
+  _ParserEkspresi(this.tokens);
+
+  double parse() {
+    final result = _parseTambahKurang();
+    if (index != tokens.length) {
+      throw Exception('Ekspresi tidak valid');
+    }
+    return result;
+  }
+
+  double _parseTambahKurang() {
+    double value = _parseKaliBagi();
+
+    while (index < tokens.length &&
+        (tokens[index] == '+' || tokens[index] == '-')) {
+      final op = tokens[index++];
+      final rhs = _parseKaliBagi();
+      if (op == '+') {
+        value += rhs;
+      } else {
+        value -= rhs;
+      }
+    }
+
+    return value;
+  }
+
+  double _parseKaliBagi() {
+    double value = _parseUnary();
+
+    while (index < tokens.length &&
+        (tokens[index] == '*' || tokens[index] == '/')) {
+      final op = tokens[index++];
+      final rhs = _parseUnary();
+      if (op == '*') {
+        value *= rhs;
+      } else {
+        if (rhs == 0) {
+          throw Exception('Pembagi nol');
+        }
+        value /= rhs;
+      }
+    }
+
+    return value;
+  }
+
+  double _parseUnary() {
+    if (index < tokens.length &&
+        (tokens[index] == 'u-' || tokens[index] == 'u+')) {
+      final op = tokens[index++];
+      final value = _parseUnary();
+      return op == 'u-' ? -value : value;
+    }
+
+    return _parsePrimary();
+  }
+
+  double _parsePrimary() {
+    if (index >= tokens.length) {
+      throw Exception('Ekspresi tidak lengkap');
+    }
+
+    final token = tokens[index];
+
+    if (token == '(') {
+      index++;
+      final value = _parseTambahKurang();
+      if (index >= tokens.length || tokens[index] != ')') {
+        throw Exception('Kurung tidak tertutup');
+      }
+      index++;
+      return value;
+    }
+
+    if (RegExp(r'^[0-9]+(\.[0-9]+)?$').hasMatch(token)) {
+      index++;
+      return double.parse(token);
+    }
+
+    throw Exception('Token tidak valid');
+  }
+}
+
+double? hitungEkspresi(String ekspresi) {
+  final teks = _normalisasiEkspresi(ekspresi);
+  final tokens = _tokenisasiEkspresi(teks);
+
+  if (tokens.isEmpty) {
+    return null;
+  }
+
+  try {
+    return _ParserEkspresi(tokens).parse();
+  } catch (_) {
+    return null;
+  }
+}
+
 // APLIKASI
 class AplikasiKalkulator extends StatefulWidget {
   const AplikasiKalkulator({super.key});
@@ -500,6 +681,16 @@ class _HalamanUtamaState extends State<HalamanUtama> {
                       child: Row(
                         children: [
                           _tombolLebar('C', warna: biru, aksi: hapusSemua),
+                          _tombolLebar(
+                            '(',
+                            warna: biru,
+                            aksi: () => tambahkanInput('('),
+                          ),
+                          _tombolLebar(
+                            ')',
+                            warna: biru,
+                            aksi: () => tambahkanInput(')'),
+                          ),
                           _tombolLebar('⌫', warna: biru, aksi: hapusTerakhir),
                           _tombolLebar(
                             '÷',
@@ -696,21 +887,73 @@ class _HalamanUtamaState extends State<HalamanUtama> {
   // LOGIKA KALKULATOR
   void tambahkanInput(String input) {
     setState(() {
-      final operator = ['÷', 'x', '-', '+'];
+      if (tampilan == 'Error') {
+        tampilan = '0';
+      }
+
+      final karakterTerakhir = tampilan == '0'
+          ? ''
+          : tampilan.substring(tampilan.length - 1);
 
       if (input == '0' && tampilan == '0') {
         return;
       }
 
-      if (operator.contains(input)) {
-        if (operatorHitung.isNotEmpty) {
+      if (input == '(') {
+        if (tampilan == '0') {
+          tampilan = '(';
           return;
         }
 
-        nilaiPertama = int.tryParse(tampilan) ?? 0;
+        if (_isAngka(karakterTerakhir) || karakterTerakhir == ')') {
+          tampilan += 'x';
+        }
+
+        tampilan += '(';
+        return;
+      }
+
+      if (input == ')') {
+        if (tampilan == '0' || !tampilan.contains('(')) {
+          return;
+        }
+
+        if (_isOperator(karakterTerakhir) || karakterTerakhir == '(') {
+          return;
+        }
+
+        tampilan += ')';
+        return;
+      }
+
+      if (_isOperator(input)) {
+        if (tampilan == '0') {
+          if (input == '-') {
+            tampilan = '-';
+          }
+          return;
+        }
+
+        if (karakterTerakhir == '(') {
+          if (input == '-') {
+            tampilan += '-';
+          }
+          return;
+        }
+
+        if (_isOperator(karakterTerakhir)) {
+          tampilan = tampilan.substring(0, tampilan.length - 1) + input;
+          operatorHitung = input;
+          return;
+        }
+
         operatorHitung = input;
         tampilan += input;
         return;
+      }
+
+      if (karakterTerakhir == ')' && _isAngka(input)) {
+        tampilan += 'x';
       }
 
       if (tampilan == '0') {
@@ -723,42 +966,23 @@ class _HalamanUtamaState extends State<HalamanUtama> {
 
   void prosesHitung() {
     setState(() {
-      if (operatorHitung.isEmpty) return;
-
-      final bagian = tampilan.split(operatorHitung);
-
-      if (bagian.length != 2) return;
-
-      nilaiPertama = int.tryParse(bagian[0]) ?? 0;
-      nilaiKedua = int.tryParse(bagian[1]) ?? 0;
-
-      int hasil = 0;
-
-      switch (operatorHitung) {
-        case '+':
-          hasil = nilaiPertama + nilaiKedua;
-          break;
-
-        case '-':
-          hasil = nilaiPertama - nilaiKedua;
-          break;
-
-        case 'x':
-          hasil = nilaiPertama * nilaiKedua;
-          break;
-
-        case '÷':
-          if (nilaiKedua == 0) {
-            tampilan = 'Error';
-            operatorHitung = '';
-            return;
-          }
-
-          hasil = nilaiPertama ~/ nilaiKedua;
-          break;
+      if (tampilan == '0' || tampilan == 'Error' || tampilan.isEmpty) {
+        return;
       }
 
-      tampilan = hasil.toString();
+      final hasil = hitungEkspresi(tampilan);
+      if (hasil == null) {
+        tampilan = 'Error';
+        operatorHitung = '';
+        return;
+      }
+
+      if (hasil % 1 == 0) {
+        tampilan = hasil.toInt().toString();
+      } else {
+        tampilan = hasil.toString();
+      }
+
       operatorHitung = '';
     });
   }
@@ -773,7 +997,7 @@ class _HalamanUtamaState extends State<HalamanUtama> {
 
       final karakterTerakhir = tampilan.substring(tampilan.length - 1);
 
-      if (['÷', 'x', '-', '+'].contains(karakterTerakhir)) {
+      if (_isOperator(karakterTerakhir)) {
         operatorHitung = '';
       }
 
