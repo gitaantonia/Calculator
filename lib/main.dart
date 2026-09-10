@@ -798,10 +798,10 @@ class _HalamanUtamaState extends State<HalamanUtama> {
             style: TextStyle(color: biru, fontWeight: FontWeight.bold),
           ),
           content: const Text(
-            '1. Gita\n'
-            '2. Luna\n'
-            '3. Lucy\n'
-            '4. Gevinta',
+            '1. Gita Antonia S. - 124240132\n'
+            '2. Serena Luna H. - 124240035 \n'
+            '3. Lucy Katarina B. 124240040\n'
+            '4. Gevinta Aprilia P. - 124240114 ',
             style: TextStyle(color: biru, fontSize: 16, height: 1.5),
           ),
           actions: [
