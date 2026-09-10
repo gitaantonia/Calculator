@@ -63,13 +63,13 @@ List<String> _tokenisasiEkspresi(String ekspresi) {
     }
 
     if (karakter == '-' &&
-        (i == 0 || ['+', '-', '*', '/', '(', ')'].contains(ekspresi[i - 1]))) {
+        (i == 0 || ['+', '-', '*', '/', '('].contains(ekspresi[i - 1]))) {
       tokens.add('u-');
       continue;
     }
 
     if (karakter == '+' &&
-        (i == 0 || ['+', '-', '*', '/', '(', ')'].contains(ekspresi[i - 1]))) {
+        (i == 0 || ['+', '-', '*', '/', '('].contains(ekspresi[i - 1]))) {
       tokens.add('u+');
       continue;
     }
