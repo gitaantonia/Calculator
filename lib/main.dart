@@ -603,6 +603,7 @@ class _HalamanUtamaState extends State<HalamanUtama> {
           style: TextStyle(color: putih, fontWeight: FontWeight.bold),
         ),
         actions: [
+          // POPUP MENU
           PopupMenuButton<String>(
             icon: const Icon(Icons.menu, color: putih),
             onSelected: (pilihan) {
@@ -629,7 +630,8 @@ class _HalamanUtamaState extends State<HalamanUtama> {
               ),
             ],
           ),
-
+          //
+          
           IconButton(
             tooltip: 'Logout',
             onPressed: widget.onLogout,
